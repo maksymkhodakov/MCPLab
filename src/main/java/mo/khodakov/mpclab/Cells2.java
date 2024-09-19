@@ -40,8 +40,8 @@ public class Cells2 {
             executorService.execute(cells.new Particle());
         }
 
-        System.out.println("Waiting for 15 seconds...");
-        TimeUnit.SECONDS.sleep(15);
+        System.out.println("Waiting for 10 seconds...");
+        TimeUnit.SECONDS.sleep(10);
         executorService.shutdownNow();
 
         System.out.println("Threads have finished executions.");
@@ -80,21 +80,12 @@ public class Cells2 {
         }
     }
 
-    // синхронізований доступ до задання значення клітинки
-    public void setCell(int index, int value) {
-        lock.lock();
-        try {
-            cells[index] = value;
-        } finally {
-            lock.unlock();
-        }
-    }
-
     public void moveParticle(int from, int to) {
         lock.lock();
         try {
-            setCell(from, getCell(from) - 1);
-            setCell(to, getCell(to) + 1);
+            cells[from]--; // Зменшуємо значення в клітинці from
+            cells[to]++;   // Збільшуємо значення в клітинці to
+            PerformanceCounter.increment(); // Додаємо інкремент до лічильника переміщень
             StringBuilder sb = new StringBuilder();
             for (int c : cells) {
                 sb.append(c).append(" ");

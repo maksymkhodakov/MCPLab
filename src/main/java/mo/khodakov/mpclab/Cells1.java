@@ -36,8 +36,8 @@ public class Cells1 {
             executorService.execute(cells.new Particle());
         }
 
-        System.out.println("Waiting for 15 seconds...");
-        TimeUnit.SECONDS.sleep(15);
+        System.out.println("Waiting for 10 seconds...");
+        TimeUnit.SECONDS.sleep(10);
         executorService.shutdownNow();
 
         System.out.println("Threads have finished executions.");
@@ -69,6 +69,7 @@ public class Cells1 {
     public synchronized void moveParticle(int from, int to) {
         cells[from]--;
         cells[to]++;
+        PerformanceCounter.increment(); // Додаємо інкремент до лічильника переміщень
         StringBuilder sb = new StringBuilder();
         for (int c : cells) {
             sb.append(c).append(" ");

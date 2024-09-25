@@ -4,11 +4,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Версія з блокуванням всього масиву клітинок
- */
 public class Cells2 {
 
     // клітинки
@@ -22,11 +18,11 @@ public class Cells2 {
 
     private static final int TIME_UNIT_MS = 100;
 
-    // cells[0] - кількісь атомів в i-тій клітінці
+    // cells[0] - кількість атомів в i-тій клітці
     int[] cells;
 
-    // mutual exclusion для масіву cells
-    private final ReentrantLock lock = new ReentrantLock();
+    // об'єкти для блокування клітинок
+    private final Object[] cellLocks;
 
     public static void main(String[] args) throws InterruptedException {
         Cells2 cells = new Cells2(args);
@@ -67,50 +63,65 @@ public class Cells2 {
             System.exit(1);
         }
         this.cells = new int[n];
-        this.cells[0] = k;
+        this.cellLocks = new Object[n]; // Кожна клітинка має свій об'єкт блокування
+        for (int i = 0; i < n; i++) {
+            cellLocks[i] = new Object(); // Ініціалізуємо кожен об'єкт
+        }
+        this.cells[0] = k; // Спочатку всі атоми в 0-й клітинці
     }
 
-    // синхронізований доступ до взяття значення
+    // синхронізований доступ до взяття значення клітинки
     public int getCell(int index) {
-        lock.lock();
-        try {
+        synchronized (cellLocks[index]) {
             return cells[index];
-        } finally {
-            lock.unlock();
         }
     }
 
+    // переміщення частинки між клітинками
     public void moveParticle(int from, int to) {
-        lock.lock();
-        try {
-            cells[from]--; // Зменшуємо значення в клітинці from
-            cells[to]++;   // Збільшуємо значення в клітинці to
-            PerformanceCounter.increment(); // Додаємо інкремент до лічильника переміщень
-            StringBuilder sb = new StringBuilder();
-            for (int c : cells) {
-                sb.append(c).append(" ");
+        // Спочатку блокуємо клітинки з меншою індексацією, щоб уникнути дедлоків
+        if (from < to) {
+            synchronized (cellLocks[from]) {
+                synchronized (cellLocks[to]) {
+                    performMove(from, to);
+                }
             }
-            System.out.println(sb);
-        } finally {
-            lock.unlock();
+        } else {
+            synchronized (cellLocks[to]) {
+                synchronized (cellLocks[from]) {
+                    performMove(from, to);
+                }
+            }
         }
     }
 
+    // внутрішній метод для виконання переміщення
+    private void performMove(int from, int to) {
+        cells[from]--; // Зменшуємо кількість атомів у клітинці from
+        cells[to]++;   // Збільшуємо кількість атомів у клітинці to
+        PerformanceCounter.increment(); // Додаємо інкремент до лічильника переміщень
+        StringBuilder sb = new StringBuilder();
+        for (int c : cells) {
+            sb.append(c).append(" ");
+        }
+        System.out.println(sb);
+    }
+
+    // Внутрішній клас, який представляє частинку
     private class Particle implements Runnable {
 
         private final Random random = new Random();
-
         private int cell = 0;
 
         @Override
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
                 double probability = random.nextDouble();
-                // go left
+                // Йдемо вліво
                 if (probability <= p && cell != 0) {
                     moveParticle(cell, cell - 1);
                     cell--;
-                } else if (probability > p && cell != n - 1) { // go right
+                } else if (probability > p && cell != n - 1) { // Йдемо вправо
                     moveParticle(cell, cell + 1);
                     cell++;
                 }
